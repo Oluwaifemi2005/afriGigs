@@ -25,7 +25,7 @@ export const Register = () => {
   const [city, setCity] = useState('');
   const [phone, setPhone] = useState('');
   const [companyName, setCompanyName] = useState('');
-  const [skills, setSkills] = useState('React, Tailwind CSS, Node.js');
+  const [skills, setSkills] = useState('');
   const [githubOrPortfolio, setGithubOrPortfolio] = useState('');
   
   const [error, setError] = useState('');
