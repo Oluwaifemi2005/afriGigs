@@ -35,6 +35,9 @@ app.get('/api/health', (req, res) => {
 
 // Seed endpoint for instant Hackathon demo & testing
 app.post('/api/seed', async (req, res) => {
+  if (process.env.NODE_ENV === 'production' || process.env.ENABLE_DEMO_SEED !== 'true') {
+    return res.status(404).json({ success: false, message: 'Demo seeding is disabled.' });
+  }
   try {
     await JobTask.deleteMany({});
     await User.deleteMany({});

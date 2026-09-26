@@ -21,7 +21,6 @@ export const Register = () => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
   const [country, setCountry] = useState('Nigeria');
   const [city, setCity] = useState('');
   const [phone, setPhone] = useState('');
@@ -52,10 +51,10 @@ export const Register = () => {
         githubOrPortfolio: role === 'developer' ? githubOrPortfolio : '',
       };
 
-      const result = await register(userData);
-      navigate('/verify-email', { state: { email: result.email, message: result.message, retryAfter: result.retryAfter } });
+      const challenge = await register(userData);
+      navigate('/login', { state: { challenge } });
     } catch (err) {
-      setError((err.message || 'Registration failed.') + ' If your account was created, open the email verification page to resend your OTP.');
+      setError(err.message || 'Registration failed.');
     } finally {
       setLoading(false);
     }
@@ -105,7 +104,7 @@ export const Register = () => {
         {error && (
           <div className="mb-4 p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs flex items-center gap-2">
             <AlertCircle className="w-4 h-4 shrink-0" />
-            <span>{error} <Link to="/verify-email" state={{ email }} className="underline">Verify email / resend OTP</Link></span>
+            <span>{error}</span>
           </div>
         )}
 
@@ -136,20 +135,15 @@ export const Register = () => {
           </div>
 
           <div>
-            <label htmlFor="register-password" className="block text-xs font-semibold text-slate-300 mb-1">Password</label>
-            <div className="relative">
+            <label className="block text-xs font-semibold text-slate-300 mb-1">Password</label>
             <input
-              id="register-password"
-              type={showPassword ? 'text' : 'password'}
-              autoComplete="new-password"
+              type="password"
               required
               placeholder="Minimum 6 characters"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full glass-input rounded-xl pl-3.5 pr-16 py-2 text-xs text-white placeholder-slate-500 outline-none"
+              className="w-full glass-input rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-500 outline-none"
             />
-            <button type="button" aria-controls="register-password" aria-label={showPassword ? 'Hide password' : 'Show password'} aria-pressed={showPassword} onClick={() => setShowPassword(value => !value)} className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-brand-400">{showPassword ? 'Hide' : 'Show'}</button>
-            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">

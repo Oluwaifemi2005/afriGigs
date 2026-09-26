@@ -1,10 +1,12 @@
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
+import { sendCode, consumeCode, secret } from '../services/authCodes.js';
+import { sendRegistrationOtp, consumeRegistrationOtp } from '../services/registrationOtp.js';
 
 // Helper to sign JWT
-const generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET || 'super_secret_gigafrik_hackathon_jwt_key_2026', {
-    expiresIn: '30d',
+const generateToken = (id, authMethod = 'email-otp') => {
+  return jwt.sign({ id, authMethod }, secret(), {
+    expiresIn: process.env.JWT_EXPIRES_IN || '1h',
   });
 };
 
@@ -15,19 +17,20 @@ export const registerUser = async (req, res, next) => {
   try {
     const { name, email, password, role, country, city, phone, skills, companyName, bio, githubOrPortfolio } = req.body;
 
-    if (!name || !email || !password || !role) {
+    if (!name || typeof email !== 'string' || typeof password !== 'string' || !password || !role) {
       return res.status(400).json({ success: false, message: 'Please provide name, email, password, and role' });
     }
 
-    const userExists = await User.findOne({ email: email.toLowerCase() });
+    const userExists = await User.findOne({ email: email.trim().toLowerCase() });
     if (userExists) {
       return res.status(400).json({ success: false, message: 'An account with this email already exists' });
     }
 
     const user = await User.create({
       name,
-      email: email.toLowerCase(),
+      email: email.trim().toLowerCase(),
       password,
+      emailVerified: false,
       role,
       country: country || 'Nigeria',
       city: city || 'Lagos',
@@ -38,42 +41,24 @@ export const registerUser = async (req, res, next) => {
       githubOrPortfolio: githubOrPortfolio || '',
     });
 
-    const token = generateToken(user._id);
-
-    res.status(201).json({
-      success: true,
-      token,
-      user: {
-        _id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        country: user.country,
-        city: user.city,
-        phone: user.phone,
-        skills: user.skills,
-        companyName: user.companyName,
-        bio: user.bio,
-        githubOrPortfolio: user.githubOrPortfolio,
-      },
-    });
+    res.status(201).json(await sendRegistrationOtp(user));
   } catch (error) {
     next(error);
   }
 };
 
-// @desc    Authenticate user & get token
+// @desc    Authenticate a verified user with email and password
 // @route   POST /api/auth/login
 // @access  Public
 export const loginUser = async (req, res, next) => {
   try {
     const { email, password } = req.body;
 
-    if (!email || !password) {
+    if (typeof email !== 'string' || typeof password !== 'string' || !password) {
       return res.status(400).json({ success: false, message: 'Please provide both email and password' });
     }
 
-    const user = await User.findOne({ email: email.toLowerCase() }).select('+password');
+    const user = await User.findOne({ email: email.trim().toLowerCase() }).select('+password');
     if (!user) {
       return res.status(401).json({ success: false, message: 'Invalid email or password' });
     }
@@ -83,25 +68,12 @@ export const loginUser = async (req, res, next) => {
       return res.status(401).json({ success: false, message: 'Invalid email or password' });
     }
 
-    const token = generateToken(user._id);
-
-    res.json({
-      success: true,
-      token,
-      user: {
-        _id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        country: user.country,
-        city: user.city,
-        phone: user.phone,
-        skills: user.skills,
-        companyName: user.companyName,
-        bio: user.bio,
-        githubOrPortfolio: user.githubOrPortfolio,
-      },
-    });
+    if (!user.emailVerified) {
+      return res.status(403).json({ success: false, code: 'EMAIL_NOT_VERIFIED', message: 'Please verify your email before logging in.' });
+    }
+    const token = generateToken(user._id, 'password');
+    user.password = undefined;
+    res.json({ success: true, token, expiresAt: new Date(jwt.decode(token).exp * 1000), user });
   } catch (error) {
     next(error);
   }
@@ -124,4 +96,43 @@ export const getMe = async (req, res, next) => {
   } catch (error) {
     next(error);
   }
+};
+
+export const resendVerification = async (req, res, next) => {
+  try {
+    const { email } = req.body;
+    if (typeof email !== 'string') return res.status(400).json({ success: false, message: 'Please provide an email address.' });
+    const user = await User.findOne({ email: email.trim().toLowerCase(), emailVerified: { $ne: true } });
+    if (!user) return res.status(400).json({ success: false, message: 'Unable to send verification. Try signing in.' });
+    res.json(await sendRegistrationOtp(user));
+  } catch (error) { next(error); }
+};
+
+const verify = (purpose) => async (req, res, next) => {
+  try {
+    const user = await consumeCode(req.body.challengeId, purpose === 'verify' ? req.body.token : req.body.code, purpose);
+    if (!user) return res.status(400).json({ success: false, message: purpose === 'verify' ? 'This verification link is invalid, expired, or already used. Request a new link from the login page.' : 'Invalid or expired code. After five attempts, request a new code.' });
+    if (purpose === 'verify') return res.json({ success: true, message: 'Email verified. Please sign in to receive your login code.' });
+    if (!user.emailVerified) return res.status(403).json({ success: false, message: 'Please verify your email first.' });
+    const token = generateToken(user._id);
+    res.json({ success: true, token, expiresAt: new Date(jwt.decode(token).exp * 1000), user });
+  } catch (error) { next(error); }
+};
+export const verifyEmail = async (req, res, next) => {
+  try {
+    const user = await consumeRegistrationOtp(req.body.email, req.body.code);
+    if (!user) return res.status(400).json({ success: false, message: 'Invalid or expired registration OTP. After five attempts, resend the OTP.' });
+    res.json({ success: true, message: 'Email verified. Please sign in.' });
+  } catch (error) { next(error); }
+};
+export const verifyLogin = verify('login');
+
+export const resendLogin = async (req, res, next) => {
+  try {
+    const { challengeId } = req.body;
+    if (typeof challengeId !== 'string' || challengeId.length > 64) return res.status(400).json({ success: false, message: 'Please sign in again.' });
+    const user = await User.findOne({ 'authCode.id': challengeId, 'authCode.purpose': 'login', 'authCode.sentAt': { $gt: new Date(Date.now() - 30 * 60 * 1000) }, emailVerified: true });
+    if (!user) return res.status(400).json({ success: false, message: 'Your login request expired. Please sign in again.' });
+    res.json(await sendCode(user, 'login', challengeId));
+  } catch (error) { next(error); }
 };

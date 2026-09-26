@@ -5,6 +5,7 @@ import Navbar from './components/Navbar';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import VerifyEmail from './pages/VerifyEmail';
 import ClientDashboard from './pages/ClientDashboard';
 import DeveloperDashboard from './pages/DeveloperDashboard';
 import PostJob from './pages/PostJob';
@@ -44,6 +45,7 @@ export const App = () => {
               <Route path="/" element={<Home />} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
+              <Route path="/verify-email" element={<VerifyEmail />} />
 
               {/* Protected Client Routes */}
               <Route

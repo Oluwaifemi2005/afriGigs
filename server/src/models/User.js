@@ -22,6 +22,22 @@ const userSchema = new mongoose.Schema(
       minlength: [6, 'Password must be at least 6 characters long'],
       select: false,
     },
+    emailVerified: { type: Boolean, default: false },
+    lastRegistrationEmailAt: { type: Date, select: false },
+    registrationOtp: {
+      type: new mongoose.Schema({
+        id: String, hash: String, expiresAt: Date, attempts: Number,
+      }, { _id: false }),
+      select: false,
+    },
+    lastAuthEmailAt: { type: Date, select: false },
+    authCode: {
+      type: new mongoose.Schema({
+        id: String, hash: String, purpose: { type: String, enum: ['verify', 'login'] },
+        expiresAt: Date, sentAt: Date, attempts: Number,
+      }, { _id: false }),
+      select: false,
+    },
     role: {
       type: String,
       enum: {

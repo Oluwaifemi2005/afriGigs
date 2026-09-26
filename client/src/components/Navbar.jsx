@@ -5,7 +5,7 @@ import { Briefcase, Code, PlusCircle, LogOut, Globe, Sparkles, Database, Check }
 import { jobApi } from '../api/client';
 
 export const Navbar = () => {
-  const { user, isAuthenticated, isClient, isDeveloper, logout, quickDemoLogin } = useAuth();
+  const { user, isAuthenticated, isClient, isDeveloper, logout } = useAuth();
   const navigate = useNavigate();
   const [seeding, setSeeding] = useState(false);
   const [seedSuccess, setSeedSuccess] = useState(false);
@@ -73,6 +73,7 @@ export const Navbar = () => {
         <div className="flex items-center gap-3">
           
           {/* Quick Seed Demo Button for Hackathon Review */}
+          {import.meta.env.DEV && (
           <button
             onClick={handleSeed}
             disabled={seeding}
@@ -91,6 +92,7 @@ export const Navbar = () => {
               </>
             )}
           </button>
+          )}
 
           {isAuthenticated ? (
             <div className="flex items-center gap-3">

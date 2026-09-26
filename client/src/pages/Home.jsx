@@ -12,7 +12,7 @@ export const Home = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
-  const { isAuthenticated, isDeveloper, quickDemoLogin } = useAuth();
+  const { isAuthenticated, isDeveloper } = useAuth();
   const navigate = useNavigate();
 
   const fetchJobs = async () => {
@@ -52,13 +52,8 @@ export const Home = () => {
     }
   };
 
-  const handleDemo = async (role) => {
-    try {
-      await quickDemoLogin(role);
-      navigate(role === 'client' ? '/dashboard/client' : '/dashboard/developer');
-    } catch (err) {
-      alert('Demo login failed: ' + err.message);
-    }
+  const handleDemo = () => {
+    navigate('/login');
   };
 
   return (
@@ -99,13 +94,13 @@ export const Home = () => {
                 onClick={() => handleDemo('client')}
                 className="flex-1 sm:flex-initial text-xs font-bold px-3.5 py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-amber-300 border border-amber-500/30 hover:border-amber-400/60 transition-all shadow-md"
               >
-                Demo as Client 💼
+                Sign in as Client 💼
               </button>
               <button
                 onClick={() => handleDemo('developer')}
                 className="flex-1 sm:flex-initial text-xs font-bold px-3.5 py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-brand-300 border border-brand-500/30 hover:border-brand-400/60 transition-all shadow-md"
               >
-                Demo as Developer 💻
+                Sign in as Developer 💻
               </button>
             </div>
           </div>

@@ -5,11 +5,11 @@ export const notFound = (req, res, next) => {
 };
 
 export const errorHandler = (err, req, res, next) => {
-  const statusCode = res.statusCode === 200 ? 500 : res.statusCode;
+  const statusCode = err.status || (err.name === 'ValidationError' || err.code === 11000 ? 400 : res.statusCode === 200 ? 500 : res.statusCode);
+  if (statusCode === 429) res.set('Retry-After', '60');
 
   res.status(statusCode).json({
     success: false,
-    message: err.message,
-    stack: process.env.NODE_ENV === 'production' ? null : err.stack,
+    message: err.code === 11000 ? 'An account with this email already exists.' : statusCode === 500 ? 'An unexpected server error occurred. Please try again.' : err.message,
   });
 };

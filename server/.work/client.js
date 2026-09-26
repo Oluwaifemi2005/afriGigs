@@ -11,7 +11,7 @@ const api = axios.create({
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('gigafrik_token');
-    if (token && (!config.url.startsWith('/auth/') || config.url === '/auth/me')) {
+    if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
@@ -23,15 +23,12 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401 && error.config?.headers?.Authorization) {
-      localStorage.removeItem('gigafrik_token');
-      localStorage.removeItem('gigafrik_user');
-      window.dispatchEvent(new Event('auth:expired'));
-      if (window.location.pathname !== '/login') window.location.replace('/login');
+    if (error.response?.status === 401 && error.config?.headers?.Authorization &&
+        !['/auth/login', '/auth/verify-login'].includes(error.config?.url)) {
+      window.dispatchEvent(new Event('gigafrik-session-expired'));
     }
     const message = error.response?.data?.message || error.message || 'An unexpected error occurred';
-    error.message = message;
-    return Promise.reject(error);
+    return Promise.reject(new Error(message));
   }
 );
 
@@ -39,11 +36,10 @@ api.interceptors.response.use(
 export const authApi = {
   login: (credentials) => api.post('/auth/login', credentials),
   register: (userData) => api.post('/auth/register', userData),
-  getMe: () => api.get('/auth/me'),
   verifyEmail: (data) => api.post('/auth/verify-email', data),
   verifyLogin: (data) => api.post('/auth/verify-login', data),
   resendVerification: (email) => api.post('/auth/resend-verification', { email }),
-  resendLogin: (challengeId) => api.post('/auth/resend-login', { challengeId }),
+  getMe: () => api.get('/auth/me'),
 };
 
 // Job endpoints
